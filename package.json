@@ -10,7 +10,9 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/ejs": "^3.1.5",
     "@types/node": "^20.14.8",
+    "@types/nodemailer": "^6.4.15",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.2"
   },
@@ -24,9 +26,11 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
     "express": "^4.19.2",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.4.3"
+    "mongoose": "^8.4.3",
+    "nodemailer": "^6.9.14"
   }
 }

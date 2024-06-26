@@ -7,6 +7,7 @@ import ejs from 'ejs';
 import path from "path";
 import sendMail from "../utils/sendMail";
 import { sendToken } from "../utils/jwt";
+import { redis } from "../utils/redis";
 
 //register user
 interface IRegistrationBody {
@@ -152,3 +153,27 @@ export const loginUser = CatchAsyncError(async(req:Request,res:Response,next:Nex
 
 // logout user
 
+export const logoutUser = CatchAsyncError(async(req:Request,res:Response,next:NextFunction) => {
+    try {
+        res.cookie('access_token',"",{maxAge:1});
+        res.cookie('refresh_token',"",{maxAge:1});
+        const userId = req.user?._id || '';
+        redis.del(userId);
+        res.status(200).json({
+            success:true,
+            message:"Logged out successfully",
+        });
+    } catch (error:any){
+        return next(new ErrorHandler(error.message,400));
+    }
+});
+
+// validate user role
+export const authorizeRoles = (...roles: string[]) => {
+    return (req:Request,res:Response,next:NextFunction) => {
+        if(!roles.includes(req.user?.role || '')){
+            return next(new ErrorHandler(`Role : ${req.user?.role} is not allowed to access this resourse`,403));
+        }
+        next();
+    }
+}

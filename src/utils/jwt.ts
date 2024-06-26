@@ -24,6 +24,7 @@ export const sendToken = (user:IUser, statusCode:number,res:Response) => {
     const accessTokenExpire = parseInt(process.env.ACCESS_TOKEN_EXPIRE || '300',10);
     const refreshTokenExpire = parseInt(process.env.REFRESH_TOKEN_EXPIRE || '1200', 10);
 
+    
     // options for cookies
     const accessTokenOptions:ITokenOptions = {
         expires: new Date(Date.now() + accessTokenExpire * 1000),

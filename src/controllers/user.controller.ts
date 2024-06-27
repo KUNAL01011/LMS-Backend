@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import userModel, { IUser } from "../models/user.model";
-import jwt, { Secret } from "jsonwebtoken";
+import jwt, { JwtPayload, Secret } from "jsonwebtoken";
 import ErrorHandler from "../utils/ErrorHandler";
 import { CatchAsyncError } from "../middleware/catchAsyncError";
 import ejs from 'ejs';
 import path from "path";
 import sendMail from "../utils/sendMail";
-import { sendToken } from "../utils/jwt";
+import { accessTokenOptions, refreshTokenOptions, sendToken } from "../utils/jwt";
 import { redis } from "../utils/redis";
 
 //register user
@@ -168,12 +168,40 @@ export const logoutUser = CatchAsyncError(async(req:Request,res:Response,next:Ne
     }
 });
 
-// validate user role
-export const authorizeRoles = (...roles: string[]) => {
-    return (req:Request,res:Response,next:NextFunction) => {
-        if(!roles.includes(req.user?.role || '')){
-            return next(new ErrorHandler(`Role : ${req.user?.role} is not allowed to access this resourse`,403));
+//update access token 
+export const updateAccessToken = CatchAsyncError(async(req:Request,res:Response,next:NextFunction)=>{
+    try {
+        const refresh_token = req.cookies.refresh_token as string;
+        const decoded = jwt.verify(refresh_token,process.env.REFRESH_TOKEN as string) as JwtPayload;
+
+        const message = 'Could not refresh token';
+        if(!decoded) {
+            return next(new ErrorHandler(message,400));
         }
-        next();
+
+        const session = await redis.get(decoded.id as string);
+
+        if(!session) {
+            return next(new ErrorHandler(message,400));
+        }
+
+        const user = JSON.parse(session);
+
+        const accessToken = jwt.sign({id:user._id},process.env.ACCESS_TOKEN as string,{expiresIn:"5m"});
+        const refreshToken = jwt.sign({id:user._id},process.env.REFRESH_TOKEN as string, {expiresIn:"3d",});
+
+        res.cookie("access_token",accessToken,accessTokenOptions);
+        res.cookie("refresh_token",refreshToken,refreshTokenOptions);
+
+        res.status(200).json({
+            status:"success",
+            accessToken,
+        });
     }
-}
+    catch (error:any) {
+        return next (new ErrorHandler(error.message,400));
+    }
+});
+
+
+

@@ -82,7 +82,7 @@ export const getSingleCourse = CatchAsyncError(async (req: Request, res: Respons
             })
         }
         else {
-            const course = await CourseModel.findById(req.params.id).select("-courseData.videoUrl -courseData.suggestion -courseData.questions -courseData.links")
+            const course = await CourseModel.findById(req.params.id).select("-courseData.videoUrl -courseData.links -courseData.suggestion -courseData.questions")
 
             await redis.set(courseId, JSON.stringify(course));
 
@@ -109,7 +109,7 @@ export const getAllCourses = CatchAsyncError(async (req: Request, res: Response,
             })
         }
         else {
-            const courses = await CourseModel.find().select("-courseData.videoUrl -courseData.suggestion -courseData.questions -courseData.links")
+            const courses = await CourseModel.find().select("-courseData.videoUrl -courseData.links -courseData.suggestion -courseData.questions")
 
             await redis.set("allCourses", JSON.stringify(courses));
 
@@ -125,3 +125,28 @@ export const getAllCourses = CatchAsyncError(async (req: Request, res: Response,
 });
 
 //get course content --only for valid user
+
+export const getCourseByUser = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userCourseList = req.user?.courses;
+        const courseId = req.params.id;
+
+        const courseExists = userCourseList?.find((course: any) => course._id.toString() === courseId);
+
+        if (!courseExists) {
+            return next(new ErrorHandler("You are not eligible to access this course", 404));
+        }
+
+        const course = await CourseModel.findById(courseId);
+
+        const content = course?.courseData;
+
+        res.status(200).json({
+            success: true,
+            content
+        });
+
+    } catch (error: any) {
+        return next(new ErrorHandler(error.message, 500));
+    }
+})

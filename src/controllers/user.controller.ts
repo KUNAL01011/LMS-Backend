@@ -255,17 +255,11 @@ interface IUpdateUserInfo {
 
 export const updateUserInfo = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { name, email } = req.body as IUpdateUserInfo;
+        const { name } = req.body as IUpdateUserInfo;
         const userId = req.user?._id;
         const user = await userModel.findById(userId);
 
-        if (email && user) {
-            const isEmailExist = await userModel.findOne({ email });
-            if (isEmailExist) {
-                return next(new ErrorHandler("Email already exist ", 400));
-            }
-            user.email = email;
-        }
+       
 
         if (name && user) {
             user.name = name;
@@ -341,7 +335,9 @@ interface IUpdateProfilePicture {
 
 export const updateProfilePicture = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
+
         const { avatar } = req.body as IUpdateProfilePicture;
+
 
         const userId = req.user?._id;
 
@@ -400,35 +396,35 @@ export const getAllUsers = CatchAsyncError(async (req: Request, res: Response, n
 })
 
 //update user role --only for admin
-export const updateUserRole = CatchAsyncError(async(req:Request,res:Response,next:NextFunction) => {
+export const updateUserRole = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {id,role} = req.body;
-        updateUserRoleService(res,id,role);
-    } catch (error:any) {
-        return next(new ErrorHandler(error.message,400));
+        const { id, role } = req.body;
+        updateUserRoleService(res, id, role);
+    } catch (error: any) {
+        return next(new ErrorHandler(error.message, 400));
     }
 })
 
 // Delete user -- only for admin
-export const deleteUser = CatchAsyncError(async (req:Request,res:Response,next:NextFunction) =>{
+export const deleteUser = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
 
         const user = await userModel.findById(id);
 
-        if(!user){
-            return next(new ErrorHandler("User not found",404));
+        if (!user) {
+            return next(new ErrorHandler("User not found", 404));
         }
 
-        await user.deleteOne({id});
+        await user.deleteOne({ id });
 
         await redis.del(id);
 
         res.status(200).json({
-            success:true,
-            message:"User deleted successfully",
+            success: true,
+            message: "User deleted successfully",
         })
-    } catch (error:any) {
-        return next(new ErrorHandler(error.message,400));
+    } catch (error: any) {
+        return next(new ErrorHandler(error.message, 400));
     }
 })

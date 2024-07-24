@@ -10,6 +10,7 @@ import ejs from 'ejs';
 import path from "path";
 import sendMail from "../utils/sendMail";
 import NotificationModel from "../models/notification.model";
+import axios from "axios";
 
 
 //upload course
@@ -89,7 +90,7 @@ export const getSingleCourse = CatchAsyncError(async (req: Request, res: Respons
         else {
             const course = await CourseModel.findById(req.params.id).select("-courseData.videoUrl -courseData.links -courseData.suggestion -courseData.questions")
 
-            await redis.set(courseId, JSON.stringify(course),'EX',604800);
+            await redis.set(courseId, JSON.stringify(course), 'EX', 604800);
 
             res.status(200).json({
                 success: true,
@@ -105,26 +106,16 @@ export const getSingleCourse = CatchAsyncError(async (req: Request, res: Respons
 //get all courses --without purchasing
 export const getAllCourses = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const isCacheExist = await redis.get("allCourses");
-        if (isCacheExist) {
-            const courses = JSON.parse(isCacheExist);
-            res.status(200).json({
-                success: true,
-                courses,
-            })
-        }
-        else {
-            const courses = await CourseModel.find().select("-courseData.videoUrl -courseData.links -courseData.suggestion -courseData.questions")
 
-            await redis.set("allCourses", JSON.stringify(courses));
+        const courses = await CourseModel.find().select("-courseData.videoUrl -courseData.links -courseData.suggestion -courseData.questions")
 
-            res.status(200).json({
-                success: true,
-                courses,
-            });
-        }
 
-    } catch (error: any) {
+        res.status(200).json({
+            success: true,
+            courses,
+        });
+    }
+    catch (error: any) {
         return next(new ErrorHandler(error.message, 500));
     }
 });
@@ -189,9 +180,9 @@ export const addQuestion = CatchAsyncError(async (req: Request, res: Response, n
         courseContent.questions.push(newQuestion);
 
         await NotificationModel.create({
-            user:req.user?._id,
-            title:"New",
-            message:`You have a new question in ${courseContent.title}`,
+            user: req.user?._id,
+            title: "New",
+            message: `You have a new question in ${courseContent.title}`,
         });
 
         // save the updated course
@@ -249,9 +240,9 @@ export const addAnswer = CatchAsyncError(async (req: Request, res: Response, nex
         if (req.user?._id === question.user._id) {
             // create a notification
             await NotificationModel.create({
-                user:req.user?._id,
-                title:"New Question Reply Received",
-                message:`You have a new question reply in ${courseContent.title}`
+                user: req.user?._id,
+                title: "New Question Reply Received",
+                message: `You have a new question reply in ${courseContent.title}`
             })
         }
         else {
@@ -378,7 +369,7 @@ export const addReplyToReview = CatchAsyncError(async (req: Request, res: Respon
             comment,
         }
 
-        if(!review.commentReplies){
+        if (!review.commentReplies) {
             review.commentReplies = [];
         }
 
@@ -408,25 +399,49 @@ export const getAllUsers = CatchAsyncError(async (req: Request, res: Response, n
 
 
 // Delete course -- only for admin
-export const deleteCourse = CatchAsyncError(async (req:Request,res:Response,next:NextFunction) =>{
+export const deleteCourse = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
 
         const course = await CourseModel.findById(id);
 
-        if(!course){
-            return next(new ErrorHandler("User not found",404));
+        if (!course) {
+            return next(new ErrorHandler("User not found", 404));
         }
 
-        await course.deleteOne({id});
+        await course.deleteOne({ id });
 
         await redis.del(id);
 
         res.status(200).json({
-            success:true,
-            message:"Course deleted successfully",
+            success: true,
+            message: "Course deleted successfully",
         })
-    } catch (error:any) {
-        return next(new ErrorHandler(error.message,400));
+    } catch (error: any) {
+        return next(new ErrorHandler(error.message, 400));
+    }
+});
+
+
+// generate video url
+export const generateVideoUrl = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { videoId } = req.body;
+        const response = await axios.post(
+            `https://dev.vdocipher.com/api/videos/${videoId}/otp`,
+            { ttl: 300 },
+            {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                    Authorization: `Apisecret ${process.env.VDOCIPHER_API_SECRET}`,
+                },
+            }
+        );
+
+        res.json(response.data);
+
+    } catch (error: any) {
+        return next(new ErrorHandler(error.message, 400));
     }
 })
